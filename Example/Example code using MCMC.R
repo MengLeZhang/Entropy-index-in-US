@@ -120,13 +120,47 @@ source('Entropy function.R')
 
 ces.df <- data.frame(MSA = 1:length(fitted.scale), 
                      ces00 = NA)
-for (i in 1:rnow(ces.df)){
-  ces.df$ces00 <- entropy(fitted.scale[[i]], sub.nms = c('q1', 'q2', 'q3', 'q4', 'q5'))$ces
-}
 
-lapply(fitted.scale, entropy, 
-       sub.nms = c('q1', 'q2', 'q3', 'q4', 'q5'))
-entropy(fitted.scale[[1]], sub.nms = c('q1', 'q2', 'q3', 'q4', 'q5'))
+x <- proc.time()
+for (i in 1:nrow(ces.df)){
+  ces.df$ces00[i] <- entropy(fitted.scale[[i]], sub.nms = c('q1', 'q2', 'q3', 'q4', 'q5'))$ces
+}
+proc.time() - x #27 secs
+ces.df %>% summary
+
+library(foreach)
+library(doParallel)
+
+##  All steps are necessary 
+registerDoParallel(2) # 2 cores, impliciting creates cluster
+##  We msut register these clusters first (or the parallel backend)
+
+x <- proc.time()
+foreach(i = 1:nrow(ces.df)) %dopar% {
+  ces.df$ces00[i] <- entropy(fitted.scale[[i]], sub.nms = c('q1', 'q2', 'q3', 'q4', 'q5'))$ces
+}
+proc.time() - x #18 secs
+
+x <- proc.time()
+foreach(i = 1:nrow(ces.df), .combine = c) %dopar% {
+  entropy(fitted.scale[[i]], sub.nms = c('q1', 'q2', 'q3', 'q4', 'q5'))$ces
+}
+proc.time() - x #16 secs
+
+
+##  using iter
+t <- iter(fitted.scale)
+t %>% nextElem() #okay.. so calls next element
+
+x <- proc.time()
+foreach(i = iter(fitted.scale), .combine = c) %dopar% {
+  entropy(i, sub.nms = c('q1', 'q2', 'q3', 'q4', 'q5'))$ces
+}
+proc.time() - x #17 secs
+
+stopImplicitCluster()
+##  still not that fast .. why is
+
 
 ## Takes ages!
 ##  Any point in doing this in c++?
