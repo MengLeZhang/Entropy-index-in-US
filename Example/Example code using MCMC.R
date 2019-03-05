@@ -1,0 +1,132 @@
+##  Recreating duncan's code in MSA
+library(spdep)
+
+us2000.sf <- readRDS('Example/us2000_sf.RDS')
+us2000.sf$MSA %>% table ## roughly gets smaller
+example.sf <-
+  us2000.sf %>%
+  filter(MSA == 100) %>%
+  mutate(total2000 = quintile1 + quintile2 + quintile3 + quintile4 + quintile5,
+         total2000 = total2000 %>% round)
+## So pick not a big MSA
+
+example.sf %>% summary
+
+###############################################
+#### Specify the number of samples to generate
+burnin <- 20000
+n.sample <- 100000
+thin <- 10
+
+#### Create a spatial neighbourhood matrix
+W.nb <- poly2nb(example.sf %>% as('Spatial'), row.names = 1:nrow(example.sf))
+W <- nb2mat(W.nb, style="B")
+
+
+#### Total number of people families in each tract and year as the trials argument
+trials.mat <- cbind(dat3$total_1990, dat3$total_2000, dat3$total_20052009, dat3$total_20102014) 
+trials <- as.numeric(t(trials.mat))
+
+####################################################################
+#### Model the Quintile 1 vs the rest with the MVS.CARleroux() model
+#####################################################################
+#### Format the variables
+Y.mat <- cbind(dat3$q1fam_1990, dat3$q1fam_2000, dat3$q1fam_20052009, dat3$q1fam_20102014) 
+Y <- as.numeric(t(Y.mat))
+
+##  I know the multinomial logit is against the ref category but is it really
+##  right vs all others? (like every cate). Doubted this the first time
+#### Run the model
+## Fit the model
+mod1 <- 
+  MVS.CARleroux(formula = I(round(example.sf$quintile1)) ~ 1, 
+                family = "binomial", 
+                trials = example.sf$total2000, 
+                W=W, burnin=burnin, n.sample=n.sample, thin=thin)
+?MVS.CARleroux
+print(mod)
+
+## Check MCMC convergence
+# plot(mod$samples$beta)
+# plot(mod$samples$rho)
+# plot(mod$samples$Sigma[ , 1,1])
+# plot(mod$samples$Sigma[ , 2,1])
+# plot(mod$samples$phi[ ,1])
+
+mod2 <- 
+  MVS.CARleroux(formula = I(round(example.sf$quintile2)) ~ 1, 
+                family = "binomial", 
+                trials = example.sf$total2000, 
+                W=W, burnin=burnin, n.sample=n.sample, thin=thin)
+
+mod3 <- 
+  MVS.CARleroux(formula = I(round(example.sf$quintile3)) ~ 1, 
+                family = "binomial", 
+                trials = example.sf$total2000, 
+                W=W, burnin=burnin, n.sample=n.sample, thin=thin)
+
+mod4 <- 
+  MVS.CARleroux(formula = I(round(example.sf$quintile4)) ~ 1, 
+                family = "binomial", 
+                trials = example.sf$total2000, 
+                W=W, burnin=burnin, n.sample=n.sample, thin=thin)
+
+mod5 <- 
+  MVS.CARleroux(formula = I(round(example.sf$quintile5)) ~ 1, 
+                family = "binomial", 
+                trials = example.sf$total2000, 
+                W=W, burnin=burnin, n.sample=n.sample, thin=thin)
+
+##  Around 70-80secs per run
+
+##  Saved fitted results
+fitted <- list(
+  q1 = round(mod1$samples$fitted, 4),
+  q2 = round(mod2$samples$fitted, 4),
+  q3 = round(mod3$samples$fitted, 4),
+  q4 = round(mod4$samples$fitted, 4),
+  q5 = round(mod4$samples$fitted, 4)
+)
+
+##  each is a matrix -- each row is a draw, each col is place
+fitted.scale <- list(NULL)
+
+##  First just extract dataframes with the data then we change the numbers in 
+##  each quintile so it is scaled to equal the total
+for(i in 1:nrow(fitted$q1)){
+  fitted.scale[[i]] <- 
+    data.frame(q1.mod = fitted$q1[i, ],
+               q2.mod = fitted$q2[i, ],
+               q3.mod = fitted$q3[i, ],
+               q4.mod = fitted$q4[i, ],
+               q5.mod = fitted$q5[i, ],
+               real.pop = example.sf$total2000) %>%
+    ##  Now to count the model total and find the amount to rescale it so it is the same
+    ##  as the real pop
+    mutate(model.pop = q1.mod + q2.mod + q3.mod + q4.mod + q5.mod,
+           scale = real.pop / model.pop) %>%
+    mutate(q1 = q1.mod * scale,
+           q2 = q2.mod * scale,
+           q3 = q3.mod * scale,
+           q4 = q4.mod * scale,
+           q5 = q5.mod * scale) %>%
+    dplyr::select(q1:q5, real.pop)
+}
+
+##  Now we need to scale all the quantile so it fits
+
+##  The entropy function
+source('Entropy function.R')
+
+ces.df <- data.frame(MSA = 1:length(fitted.scale), 
+                     ces00 = NA)
+for (i in 1:rnow(ces.df)){
+  ces.df$ces00 <- entropy(fitted.scale[[i]], sub.nms = c('q1', 'q2', 'q3', 'q4', 'q5'))$ces
+}
+
+lapply(fitted.scale, entropy, 
+       sub.nms = c('q1', 'q2', 'q3', 'q4', 'q5'))
+entropy(fitted.scale[[1]], sub.nms = c('q1', 'q2', 'q3', 'q4', 'q5'))
+
+## Takes ages!
+##  Any point in doing this in c++?
