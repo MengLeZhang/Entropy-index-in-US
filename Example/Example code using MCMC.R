@@ -1,16 +1,17 @@
 ##  Recreating duncan's code in MSA
+##  First run source -- laptop version
 library(spdep)
+library(CARBayes)
 
 us2000.sf <- readRDS('Example/us2000_sf.RDS')
-us2000.sf$MSA %>% table ## roughly gets smaller
+
 example.sf <-
   us2000.sf %>%
   filter(MSA == 100) %>%
   mutate(total2000 = quintile1 + quintile2 + quintile3 + quintile4 + quintile5,
          total2000 = total2000 %>% round)
-## So pick not a big MSA
-
-example.sf %>% summary
+##  So pick not a big MSA
+##  example.sf %>% summary
 
 ###############################################
 #### Specify the number of samples to generate
@@ -22,36 +23,17 @@ thin <- 10
 W.nb <- poly2nb(example.sf %>% as('Spatial'), row.names = 1:nrow(example.sf))
 W <- nb2mat(W.nb, style="B")
 
-
-#### Total number of people families in each tract and year as the trials argument
-trials.mat <- cbind(dat3$total_1990, dat3$total_2000, dat3$total_20052009, dat3$total_20102014) 
-trials <- as.numeric(t(trials.mat))
-
 ####################################################################
 #### Model the Quintile 1 vs the rest with the MVS.CARleroux() model
 #####################################################################
 #### Format the variables
-Y.mat <- cbind(dat3$q1fam_1990, dat3$q1fam_2000, dat3$q1fam_20052009, dat3$q1fam_20102014) 
-Y <- as.numeric(t(Y.mat))
+## Fit the model for each quantile 
 
-##  I know the multinomial logit is against the ref category but is it really
-##  right vs all others? (like every cate). Doubted this the first time
-#### Run the model
-## Fit the model
 mod1 <- 
   MVS.CARleroux(formula = I(round(example.sf$quintile1)) ~ 1, 
                 family = "binomial", 
                 trials = example.sf$total2000, 
                 W=W, burnin=burnin, n.sample=n.sample, thin=thin)
-?MVS.CARleroux
-print(mod)
-
-## Check MCMC convergence
-# plot(mod$samples$beta)
-# plot(mod$samples$rho)
-# plot(mod$samples$Sigma[ , 1,1])
-# plot(mod$samples$Sigma[ , 2,1])
-# plot(mod$samples$phi[ ,1])
 
 mod2 <- 
   MVS.CARleroux(formula = I(round(example.sf$quintile2)) ~ 1, 
@@ -121,12 +103,13 @@ source('Entropy function.R')
 ces.df <- data.frame(MSA = 1:length(fitted.scale), 
                      ces00 = NA)
 
-x <- proc.time()
-for (i in 1:nrow(ces.df)){
-  ces.df$ces00[i] <- entropy(fitted.scale[[i]], sub.nms = c('q1', 'q2', 'q3', 'q4', 'q5'))$ces
-}
-proc.time() - x #27 secs
-ces.df %>% summary
+##  Do not run -- non-parallel implementation 
+# x <- proc.time()
+# for (i in 1:nrow(ces.df)){
+#   ces.df$ces00[i] <- entropy(fitted.scale[[i]], sub.nms = c('q1', 'q2', 'q3', 'q4', 'q5'))$ces
+# }
+# proc.time() - x #27 secs
+# ces.df %>% summary
 
 library(foreach)
 library(doParallel)
@@ -160,7 +143,6 @@ proc.time() - x #17 secs
 
 stopImplicitCluster()
 ##  still not that fast .. why is
-
 
 ## Takes ages!
 ##  Any point in doing this in c++?
