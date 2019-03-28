@@ -44,8 +44,6 @@ all.sf <-
 
 summary(all.sf) ## well all geoids are unique; 51 states what happened to some
 head(all.sf)
-
-
 ##  There is a geo id variablae made up of state, country, tract and some padding
 ##  str_pad pads out the string.
 ##  Another geoid2 variable is just combo of state and county
@@ -74,20 +72,18 @@ all.sf<-
 # qtm(duped_sf[3:7, ]) 
 
 
-## Solution
-duped_geoid <- all.sf$geoid[ all.sf$geoid %>% duplicated ]
-duped_sf <- all.sf %>% filter(geoid %in% duped_geoid)
+## Solution -- take largest polygon for each tract
+# duped_geoid <- all.sf$geoid[ all.sf$geoid %>% duplicated ]
+# duped_sf <- all.sf %>% filter(geoid %in% duped_geoid)
 
-noduped_sf <-
-  duped_sf %>% 
+all.sf <-
+  all.sf %>% 
+  mutate(area = st_area(all.sf)) %>%
   group_by(geoid) %>%
   mutate(area_rank = rank(-1 * area)) %>% ##rank by area
   ungroup %>%
   filter(area_rank == 1) %>%
   select.sf(-area, - area_rank)
-
-all.sf <- rbind(all.sf %>% filter(!(geoid %in% duped_geoid)),
-                noduped_sf)
 
 all.sf$geoid %>% duplicated %>% sum
 
