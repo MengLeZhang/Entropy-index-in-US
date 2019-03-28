@@ -44,6 +44,8 @@ all.sf <-
 
 summary(all.sf) ## well all geoids are unique; 51 states what happened to some
 head(all.sf)
+
+
 ##  There is a geo id variablae made up of state, country, tract and some padding
 ##  str_pad pads out the string.
 ##  Another geoid2 variable is just combo of state and county
@@ -56,6 +58,38 @@ all.sf<-
   mutate(geoid2 = paste0(STATE, 
                      COUNTY))
 
+##  1a) Taking duplicated geoid entries out ---- 
+##  First there are duplicated geoid entries and this is due to non-contiguous
+##  tracts (i.e. includes inland and islands). My solution is to keep the largest
+##  polygon in the tract (hoping its main land)
+
+##  Proof (don't run)
+# all.sf$geoid %>% duplicated %>% sum ## okay so some geoids are duplicated
+# all.sf %>% duplicated %>% sum # .. but no perfect duplciation
+# duped_geoid <- all.sf$geoid[ all.sf$geoid %>% duplicated ]
+# duped_sf <- all.sf %>% filter(geoid %in% duped_geoid) %>% arrange(geoid)
+# duped_sf ## so exactly same id
+# duped_sf$geoid %>% table ## mutiple reps
+# qtm(duped_sf[1:2, ])
+# qtm(duped_sf[3:7, ]) 
+
+
+## Solution
+duped_geoid <- all.sf$geoid[ all.sf$geoid %>% duplicated ]
+duped_sf <- all.sf %>% filter(geoid %in% duped_geoid)
+
+noduped_sf <-
+  duped_sf %>% 
+  group_by(geoid) %>%
+  mutate(area_rank = rank(-1 * area)) %>% ##rank by area
+  ungroup %>%
+  filter(area_rank == 1) %>%
+  select.sf(-area, - area_rank)
+
+all.sf <- rbind(all.sf %>% filter(!(geoid %in% duped_geoid)),
+                noduped_sf)
+
+all.sf$geoid %>% duplicated %>% sum
 
 ##  2) Read in the data table file now
 ## 2000
@@ -63,6 +97,9 @@ us2000.df <-
   google.drive.path %>% 
   file.path('2000data.csv') %>%
   read.csv
+
+
+
 
 ##  Rory's geoid (not geoid2) variable hasn't quite saved properly, we need to reconstruct with
 ##  leading zeroes
@@ -77,9 +114,12 @@ us2000.df <-
 
 
 table(us2000.df$geoid  %in% all.sf$geoid) #38 do not match
+us2000.df %>% filter(!(geoid  %in% all.sf$geoid) ) ## No population hence reason
+
+# Checkign unique entries
 us2000.df %>% duplicated %>% sum
 us2000.df$geoid %>% duplicated %>% sum
-all.sf$geoid %>% duplicated %>% sum ## okay so some in the sf file are duplicated
+
 ##  I'm sure it's for a good reason --- no wait no!
 all.sf$geoid 
 
