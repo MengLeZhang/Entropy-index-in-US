@@ -92,7 +92,9 @@ all.sf <-
 all.sf$geoid %>% duplicated %>% sum #final check
 
 ##  2) Read in the data table file now and do left joins?
+pop.vars <- c('quintile1', 'quintile2', 'quintile3', 'quintile4', 'quintile5')
 
+### 
 ## 2000
 us2000.df <- 
   google.drive.path %>% 
@@ -101,6 +103,10 @@ us2000.df <-
 
 ##  Rory's geoid (not geoid2) variable hasn't quite saved properly, we need to reconstruct with
 ##  leading zeroes
+##  Changing name to have suffix _00 due to wide form requirements
+
+names(us2000.df)[names(us2000.df) %in% pop.vars] <-
+  pop.vars %>% paste0('_00')
 
 us2000.df <-
   us2000.df %>%
@@ -108,7 +114,8 @@ us2000.df <-
                         county %>% formatC(width = 3, flag = 0, format = 'd'),
                         tract %>% formatC(width = 6, flag = 0, format = 'd'))) %>%
   mutate(geoid2 = paste0(state %>% formatC(width = 2, flag = 0, format = 'd'), 
-                         county %>% formatC(width = 3, flag = 0, format = 'd')))
+                         county %>% formatC(width = 3, flag = 0, format = 'd'))) %>%
+  dplyr::select(geoid, starts_with('quintile'))
 
 
 ##  Checking unmatched
@@ -121,13 +128,11 @@ us2000.df %>% filter(!(geoid  %in% all.sf$geoid) ) ## No population hence reason
 us2000.df %>% duplicated %>% sum
 us2000.df$geoid %>% duplicated %>% sum
 
-##  I'm sure it's for a good reason --- no wait no!
-all.sf$geoid 
 
 
-us2000.sf <- 
-  all.sf %>% right_join(us2000.df, by = 'geoid') # right join -- only include where we have data
-##  So some duplicated but hmm
+us.sf <- 
+  all.sf %>% 
+  left_join(us2000.df, by = 'geoid') # a left join to keep spatial
 
 missing.2000 <- us2000.df %>% subset(!(us2000.df$geoid %in% all.sf$geoid))
 table(missing.2000$MSA) # so tiny the amount of non matches per MSA
