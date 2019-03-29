@@ -2,11 +2,15 @@
 ## start: 20/3/2018
 ##  Right so we have data tables and we have shapes files to sorto ut.
 
+local.dir <- 'Local temp files'
+dir.create(local.dir) #create the folder for large local files
+
 ##  First we have many many shap files to stitch together ----
 ##  They all have a smiliar naming convention of
 ##  trxx_d00 where xx is a 2 digit id for state
 ##  So we look and read in folder for load in files with xx from 1 to 56
 ##  Some numbers are missing
+
 format.nums <- 1:56 %>% formatC(width = 2, flag = 0, format = 'd')
 folder.nms <- paste('tr', format.nums, '_d00', sep = '')
 
@@ -85,17 +89,15 @@ all.sf <-
   filter(area_rank == 1) %>%
   select.sf(-area, - area_rank)
 
-all.sf$geoid %>% duplicated %>% sum
+all.sf$geoid %>% duplicated %>% sum #final check
 
-##  2) Read in the data table file now
+##  2) Read in the data table file now and do left joins?
+
 ## 2000
 us2000.df <- 
   google.drive.path %>% 
   file.path('2000data.csv') %>%
   read.csv
-
-
-
 
 ##  Rory's geoid (not geoid2) variable hasn't quite saved properly, we need to reconstruct with
 ##  leading zeroes
@@ -108,6 +110,9 @@ us2000.df <-
   mutate(geoid2 = paste0(state %>% formatC(width = 2, flag = 0, format = 'd'), 
                          county %>% formatC(width = 3, flag = 0, format = 'd')))
 
+
+##  Checking unmatched
+table(all.sf$geoid %in% us2000.df$geoid) #Lots aren't in here but that's cos we picked select MSA
 
 table(us2000.df$geoid  %in% all.sf$geoid) #38 do not match
 us2000.df %>% filter(!(geoid  %in% all.sf$geoid) ) ## No population hence reason
