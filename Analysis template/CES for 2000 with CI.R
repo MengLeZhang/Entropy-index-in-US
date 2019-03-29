@@ -21,7 +21,9 @@ cl <- makePSOCKcluster(n.cores)
 
 foreach (i = 1:n.cores, .combine = c) %dopar% {
   library(tidyverse)
+  library(sf)
   ces.confidence(msa.sf)
 }
-
+## okay so dopar doesn't export libraries -- other than that it will export if in
+# function
 stopImplicitCluster(cl)
