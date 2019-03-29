@@ -9,22 +9,33 @@ library(doParallel)
 ##  Needs; msa.sf and its W matrix to be passed in 
 ##  other arguments are burinin, n.sample, and thin
 ### Useful example case
-us2000.sf <- readRDS('Example/us2000_sf.RDS')
+##  INPUT is a file called msa.sf
+##  OUTPUT is a literally just a vector called ces.vec giving the ces
 
-msa.sf <-
-  us2000.sf %>%
-  filter(MSA == 100) %>%
-  mutate(total2000 = quintile1 + quintile2 + quintile3 + quintile4 + quintile5,
-         total2000 = total2000 %>% round)
+# local.dir <- 'Local temp files'
+# us2000.sf <- readRDS(local.dir %>% file.path('us2000_sf.RDS'))
+# 
+# msa.sf <-
+#   us2000.sf %>%
+#   filter(MSA == 100) %>%
+#   mutate(total2000 = quintile1 + quintile2 + quintile3 + quintile4 + quintile5,
+#          total2000 = total2000 %>% round)
+# 
+# burnin <- 20000
+# n.sample <- 40000 + burnin #because sample includes burin
+# thin <- 10
 
-burnin <- 20000
-n.sample <- 20000 + burnin #because sample includes burin
-thin <- 10
+
+
+# 1) Starting MCMC routine ------------------------------------------------
+##  Need to create model for each group
+
 
 #### Create a spatial neighbourhood matrix
-W.nb <- poly2nb(example.sf %>% as('Spatial'), row.names = 1:nrow(example.sf))
+W.nb <- poly2nb(msa.sf %>% as('Spatial'), row.names = 1:nrow(msa.sf))
 W <- nb2mat(W.nb, style="B")
 ###
+
 
 
 mod1 <- 
@@ -57,9 +68,8 @@ mod5 <-
                 trials = msa.sf$total2000, 
                 W=W, burnin=burnin, n.sample=n.sample, thin=thin)
 
-##  Around 70-80secs per run
 
-##  Saved fitted results
+# 2) Save the fitted results  ---------------------------------------------
 fitted <- list(
   q1 = round(mod1$samples$fitted, 4),
   q2 = round(mod2$samples$fitted, 4),
@@ -97,16 +107,16 @@ for(i in 1:nrow(fitted$q1)){
     dplyr::select(q1:q5, real.pop)
 }
 
-##  Now we need to scale all the quantile so it fits
+
+# 3) Running the entropy function -----------------------------------------
 
 ##  The entropy function
 source('Entropy function.R')
 
-ces.df <- data.frame(MSA = 1:length(fitted.scale), 
-                     ces00 = NA)
+ces.vec <- rep(NA_real_, length(fitted.scale) ) 
 
-
-foreach(i = 1:nrow(ces.df)) %do% {
-  ces.df$ces00[i] <- entropy(fitted.scale[[i]], sub.nms = c('q1', 'q2', 'q3', 'q4', 'q5'))$ces
+for(i in 1:length(ces.vec)) {
+  ces.vec[i] <- entropy(fitted.scale[[i]], sub.nms = c('q1', 'q2', 'q3', 'q4', 'q5'))$ces
 }
 
+ces.vec

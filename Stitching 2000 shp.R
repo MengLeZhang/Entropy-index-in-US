@@ -38,7 +38,7 @@ sf.list <- sf.list[-missing] #drop missing index numbers
 for (i in 1:length(sf.list)){
   sf.list[[i]] <- 
     sf.list[[i]] %>%
-    select(c('NAME', 'TRACT', 'COUNTY', 'STATE'))
+    select.sf(c('NAME', 'TRACT', 'COUNTY', 'STATE'))
 }
 
 
@@ -108,8 +108,9 @@ us2000.df <-
 ##  leading zeroes
 ##  Changing name to have suffix _00 due to wide form requirements
 
-names(us2000.df)[names(us2000.df) %in% pop.vars] <-
-  pop.vars %>% paste0('_00')
+##  No need to change name w/ suffix if we are not going for wideform
+# names(us2000.df)[names(us2000.df) %in% pop.vars] <-
+#   pop.vars %>% paste0('_00')
 
 us2000.df <-
   us2000.df %>%
@@ -118,7 +119,7 @@ us2000.df <-
                         tract %>% formatC(width = 6, flag = 0, format = 'd'))) %>%
   mutate(geoid2 = paste0(state %>% formatC(width = 2, flag = 0, format = 'd'), 
                          county %>% formatC(width = 3, flag = 0, format = 'd'))) %>%
-  dplyr::select(geoid, starts_with('quintile'))
+  dplyr::select(geoid, MSA, starts_with('quintile'))
 
 
 ##  Checking unmatched (don't run)

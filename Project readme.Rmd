@@ -42,7 +42,15 @@ code to batch download it.
 ```
 
 For the actual join, we process the data and merge it. The issue is that there is
-discepancy in how census tracts are measured.
+discepancy in how census tracts are measured. So we initially try doing it for 
+one year --- 2000. The data is then saved locally.
+
+```{r}
+##  again don't run unless you want lots of outputs
+#source('Stitching 2000 shp.R')
+```
+
+
 
 
 
