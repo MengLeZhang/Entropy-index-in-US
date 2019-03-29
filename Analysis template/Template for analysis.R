@@ -3,8 +3,6 @@
 ##  First run source -- laptop version
 library(spdep)
 library(CARBayes)
-library(foreach)
-library(doParallel)
 
 ##  Needs; msa.sf and its W matrix to be passed in 
 ##  other arguments are burinin, n.sample, and thin
@@ -18,8 +16,8 @@ library(doParallel)
 # msa.sf <-
 #   us2000.sf %>%
 #   filter(MSA == 100) %>%
-#   mutate(total2000 = quintile1 + quintile2 + quintile3 + quintile4 + quintile5,
-#          total2000 = total2000 %>% round)
+#   mutate(total = quintile1 + quintile2 + quintile3 + quintile4 + quintile5,
+#          total = total %>% round)
 # 
 # burnin <- 20000
 # n.sample <- 40000 + burnin #because sample includes burin
@@ -27,6 +25,14 @@ library(doParallel)
 
 
 
+# Wrapper function --------------------------------------------------------
+
+ces.confidence <- 
+  function(msa.sf, burnin = 20000, n.sample = 40000 + 20000, thin = 10){
+
+library(spdep)
+library(CARBayes)
+    
 # 1) Starting MCMC routine ------------------------------------------------
 ##  Need to create model for each group
 
@@ -41,31 +47,31 @@ W <- nb2mat(W.nb, style="B")
 mod1 <- 
   MVS.CARleroux(formula = I(round(msa.sf$quintile1)) ~ 1, 
                 family = "binomial", 
-                trials = msa.sf$total2000, 
+                trials = msa.sf$total, 
                 W=W, burnin=burnin, n.sample=n.sample, thin=thin)
 
 mod2 <- 
   MVS.CARleroux(formula = I(round(msa.sf$quintile2)) ~ 1, 
                 family = "binomial", 
-                trials = msa.sf$total2000, 
+                trials = msa.sf$total, 
                 W=W, burnin=burnin, n.sample=n.sample, thin=thin)
 
 mod3 <- 
   MVS.CARleroux(formula = I(round(msa.sf$quintile3)) ~ 1, 
                 family = "binomial", 
-                trials = msa.sf$total2000, 
+                trials = msa.sf$total, 
                 W=W, burnin=burnin, n.sample=n.sample, thin=thin)
 
 mod4 <- 
   MVS.CARleroux(formula = I(round(msa.sf$quintile4)) ~ 1, 
                 family = "binomial", 
-                trials = msa.sf$total2000, 
+                trials = msa.sf$total, 
                 W=W, burnin=burnin, n.sample=n.sample, thin=thin)
 
 mod5 <- 
   MVS.CARleroux(formula = I(round(msa.sf$quintile5)) ~ 1, 
                 family = "binomial", 
-                trials = msa.sf$total2000, 
+                trials = msa.sf$total, 
                 W=W, burnin=burnin, n.sample=n.sample, thin=thin)
 
 
@@ -94,7 +100,7 @@ for(i in 1:nrow(fitted$q1)){
                q3.mod = fitted$q3[i, ],
                q4.mod = fitted$q4[i, ],
                q5.mod = fitted$q5[i, ],
-               real.pop = msa.sf$total2000) %>%
+               real.pop = msa.sf$total) %>%
     ##  Now to count the model total and find the amount to rescale it so it is the same
     ##  as the real pop
     mutate(model.pop = q1.mod + q2.mod + q3.mod + q4.mod + q5.mod,
@@ -119,4 +125,5 @@ for(i in 1:length(ces.vec)) {
   ces.vec[i] <- entropy(fitted.scale[[i]], sub.nms = c('q1', 'q2', 'q3', 'q4', 'q5'))$ces
 }
 
-ces.vec
+return(ces.vec)
+}
