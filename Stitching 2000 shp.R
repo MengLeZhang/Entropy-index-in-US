@@ -91,11 +91,14 @@ all.sf <-
 
 all.sf$geoid %>% duplicated %>% sum #final check
 
-##  2) Read in the data table file now and do left joins?
+##  2) Read in the data table file now and do left joins? -----
 pop.vars <- c('quintile1', 'quintile2', 'quintile3', 'quintile4', 'quintile5')
 
-### 
-## 2000
+
+
+
+# 2a) 2000 data -----------------------------------------------------------
+
 us2000.df <- 
   google.drive.path %>% 
   file.path('2000data.csv') %>%
@@ -118,51 +121,90 @@ us2000.df <-
   dplyr::select(geoid, starts_with('quintile'))
 
 
-##  Checking unmatched
-table(all.sf$geoid %in% us2000.df$geoid) #Lots aren't in here but that's cos we picked select MSA
-
-table(us2000.df$geoid  %in% all.sf$geoid) #38 do not match
-us2000.df %>% filter(!(geoid  %in% all.sf$geoid) ) ## No population hence reason
-
-# Checkign unique entries
-us2000.df %>% duplicated %>% sum
-us2000.df$geoid %>% duplicated %>% sum
-
+##  Checking unmatched (don't run)
+# table(all.sf$geoid %in% us2000.df$geoid) #Lots aren't in here but that's cos we picked select MSA
+# table(us2000.df$geoid  %in% all.sf$geoid) #38 do not match
+# us2000.df %>% filter(!(geoid  %in% all.sf$geoid) ) ## No population hence reason
+# 
+# # Checkign unique entries
+# us2000.df %>% duplicated %>% sum
+# us2000.df$geoid %>% duplicated %>% sum
 
 
-us.sf <- 
+
+# # 2b) 2009 data -----------------------------------------------------------
+# ## Not really sure what is going on here -- we get most matches but also not 
+# ##  insignificant 
+# us2009.df <- 
+#   google.drive.path %>% 
+#   file.path('2009data.csv') %>%
+#   read.csv
+# 
+# names(us2009.df)[names(us2009.df) %in% pop.vars] <-
+#   pop.vars %>% paste0('_09')
+# 
+# 
+# us2009.df <- 
+#   us2009.df %>%
+#   mutate(geoid = paste0(state %>% formatC(width = 2, flag = 0, format = 'd'), 
+#                         county %>% formatC(width = 3, flag = 0, format = 'd'),
+#                         tract %>% formatC(width = 6, flag = 0, format = 'd'))) %>%
+#   mutate(geoid2 = paste0(state %>% formatC(width = 2, flag = 0, format = 'd'), 
+#                          county %>% formatC(width = 3, flag = 0, format = 'd'))) 
+# 
+# # %>%
+# #   dplyr::select(geoid, starts_with('quintile'))
+# 
+# 
+# 
+# table(us2009.df$geoid  %in% all.sf$geoid) #74 do not match
+# missing.2009 <- us2009.df %>% filter(!(geoid %in% all.sf$geoid))
+# missing.2009 #okay so not sure why these guys can't be found
+# table(missing.2009$state)
+# table(missing.2009$MSA)
+# ## why is there missingness like this?
+# 
+# ## So in conclusion 2009 there is something changed in the census tract
+# 
+# 
+# # 2c) 2016 data -----------------------------------------------------------
+# us2016.df <- 
+#   google.drive.path %>% 
+#   file.path('2016data.csv') %>%
+#   read.csv
+# 
+# names(us2016.df)[names(us2016.df) %in% pop.vars] <-
+#   pop.vars %>% paste0('_16')
+# 
+# 
+# us2016.df <- 
+#   us2016.df %>%
+#   mutate(geoid = paste0(state %>% formatC(width = 2, flag = 0, format = 'd'), 
+#                         county %>% formatC(width = 3, flag = 0, format = 'd'),
+#                         tract %>% formatC(width = 6, flag = 0, format = 'd'))) %>%
+#   mutate(geoid2 = paste0(state %>% formatC(width = 2, flag = 0, format = 'd'), 
+#                          county %>% formatC(width = 3, flag = 0, format = 'd'))) 
+# 
+# # %>%
+# #   dplyr::select(geoid, starts_with('quintile'))
+# 
+# table(us2016.df$geoid  %in% all.sf$geoid) #74 do not match
+# ## okay now thousands don;t match!
+# missing.2009 <- us2009.df %>% filter(!(geoid %in% all.sf$geoid))
+# missing.2009 #okay so not sure why these guys can't be found
+# table(missing.2009$state)
+# table(missing.2009$MSA)
+# ## why is there missingness like this?
+
+
+
+# 3) Merging the data and shp file ----------------------------------------
+
+us2000.sf <- 
   all.sf %>% 
   left_join(us2000.df, by = 'geoid') # a left join to keep spatial
 
-missing.2000 <- us2000.df %>% subset(!(us2000.df$geoid %in% all.sf$geoid))
-table(missing.2000$MSA) # so tiny the amount of non matches per MSA
-
-##  2009
-us2009.df <- 
-  google.drive.path %>% 
-  file.path('2009data.csv') %>%
-  read.csv
-
-us2009.df <- 
-  us2009.df %>%
-  mutate(geoid = paste0(state %>% formatC(width = 2, flag = 0, format = 'd'), 
-                        county %>% formatC(width = 3, flag = 0, format = 'd'),
-                        tract %>% formatC(width = 6, flag = 0, format = 'd'))) %>%
-  mutate(geoid2 = paste0(state %>% formatC(width = 2, flag = 0, format = 'd'), 
-                         county %>% formatC(width = 3, flag = 0, format = 'd')))
-
-
-
-us2009.sf <- all.sf %>% right_join(us2009.df, by = 'geoid') #again almost all matches
-table(us2009.df$geoid  %in% all.sf$geoid) #74 do not match
-missing.2009 <- us2009.df %>% subset(!(us2009.df$geoid %in% all.sf$geoid))
-table(missing.2009$state)
-table(us2009.df$MSA)
-
-## So in conclusion 2009 is a perfect match (Wait why)
-
-##  Save the data for an example:
-us2000.sf %>% saveRDS('Example/us2000_sf.RDS')
-
+## save on local drive
+us2000.sf %>% saveRDS(local.dir %>% file.path('us2000_sf.RDS') )
 
 
