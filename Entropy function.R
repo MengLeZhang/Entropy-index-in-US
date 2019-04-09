@@ -1,3 +1,7 @@
+##  The entropy function
+##  x = dataframe with each row being an areal unit
+##  sub.nms = names of the cols in that dataset containing the population of the
+##  groups we are interested in. (e.g. 20th percentile, 40th etc)
 
 entropy <- function(x, sub.nms){
   

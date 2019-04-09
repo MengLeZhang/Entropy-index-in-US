@@ -2,6 +2,9 @@
 ##  First run source -- laptop version
 library(spdep)
 library(CARBayes)
+library(foreach)
+library(doParallel)
+
 
 us2000.sf <- readRDS('Example/us2000_sf.RDS')
 
@@ -13,6 +16,7 @@ example.sf <-
 ##  So pick not a big MSA
 ##  example.sf %>% summary
 
+##  So we want to basically create a single version 
 ###############################################
 #### Specify the number of samples to generate
 burnin <- 20000
@@ -23,6 +27,15 @@ thin <- 10
 W.nb <- poly2nb(example.sf %>% as('Spatial'), row.names = 1:nrow(example.sf))
 W <- nb2mat(W.nb, style="B")
 
+n.cores <- 2
+
+doParallel::registerDoParallel(n.cores)
+?foreach
+
+out.list <-
+  foreach(i = 1:n.cores) %dopar% ({
+
+    library(CARBayes)
 ####################################################################
 #### Model the Quintile 1 vs the rest with the MVS.CARleroux() model
 #####################################################################
@@ -70,8 +83,12 @@ fitted <- list(
   q5 = round(mod4$samples$fitted, 4)
 )
 
+})
+
 ##  each is a matrix -- each row is a draw, each col is place
 fitted.scale <- list(NULL)
+
+
 
 ##  First just extract dataframes with the data then we change the numbers in 
 ##  each quintile so it is scaled to equal the total
@@ -110,9 +127,6 @@ ces.df <- data.frame(MSA = 1:length(fitted.scale),
 # }
 # proc.time() - x #27 secs
 # ces.df %>% summary
-
-library(foreach)
-library(doParallel)
 
 ##  All steps are necessary 
 registerDoParallel(2) # 2 cores, impliciting creates cluster

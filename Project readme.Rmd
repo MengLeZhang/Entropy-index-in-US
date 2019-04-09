@@ -1,0 +1,68 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is to explain and keep track of the project. The overall aim of this entropy
+work is to create:
+
+1) A segregation index for MSAs in the US
+2) Use spatial models to get margin of error / credible intervals for the indices
+
+# Data
+We use data on the number of people living in a particular income group in a 
+census tract from Rory. Using that data we have enough to create point estimates
+for the segregation index. However to create credible intervals we need spatial
+polygon files to work out contiguity matrices for the spatial model.
+
+First we have to load in the locations of WHERE we have stored all the data on
+1) population from Rory and 2) the census tract spatial data.
+
+```{r}
+source('Source (laptop version).R')
+```
+
+Other functions to use later include the entropy function which takes in a 
+dataframe or table with named cols. It creates the entropy index of interest from
+the data.
+
+```{r}
+source('Entropy function.R')
+```
+
+##  Joining census tract population to census shp files
+
+To start doing this we have to have the shapefiles from the US census which is
+simply split off into several individual files for states. So we have written 
+code to batch download it.
+
+```{r}
+# Do not run (unless these files are needed)
+#source('Downloading shp files from US.R')
+```
+
+For the actual join, we process the data and merge it. The issue is that there is
+discepancy in how census tracts are measured. So we initially try doing it for 
+one year --- 2000. The data is then saved locally.
+
+```{r}
+##  again don't run unless you want lots of outputs
+#source('Stitching 2000 shp.R')
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
